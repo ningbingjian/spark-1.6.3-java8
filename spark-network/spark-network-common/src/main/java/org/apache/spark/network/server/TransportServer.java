@@ -35,8 +35,10 @@ public class TransportServer implements Closeable {
         switch (mode) {
             case NIO:
                 bossGroup =  new NioEventLoopGroup(numThreads, threadFactory);
+                break;
             case EPOLL:
                 bossGroup =  new EpollEventLoopGroup(numThreads, threadFactory);
+                break;
             default:
                 throw new IllegalArgumentException("Unknown io mode: " + mode);
         }
