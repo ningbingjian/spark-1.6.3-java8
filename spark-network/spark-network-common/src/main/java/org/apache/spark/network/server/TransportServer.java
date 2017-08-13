@@ -1,5 +1,8 @@
 package org.apache.spark.network.server;
 
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -21,6 +24,7 @@ import java.util.concurrent.ThreadFactory;
  */
 public class TransportServer implements Closeable {
     private final Logger logger = LoggerFactory.getLogger(TransportServer.class);
+    private ServerBootstrap bootstrap;
     public void close() throws IOException {
 
     }
@@ -28,11 +32,12 @@ public class TransportServer implements Closeable {
         logger.info("testtsssssssssssssssssssss");
     }
     private void init(String hostToBind, int portToBind) {
-        IOMode mode = IOMode.valueOf("NIO");
+        String mode = "NIO";
+        IOMode ioMode = IOMode.valueOf(mode);
         int numThreads = 1;
         ThreadFactory threadFactory = NettyUtils.createThreadFactory("shuffle-server");
         EventLoopGroup bossGroup = null ;
-        switch (mode) {
+        switch (ioMode) {
             case NIO:
                 bossGroup =  new NioEventLoopGroup(numThreads, threadFactory);
                 break;
@@ -43,6 +48,13 @@ public class TransportServer implements Closeable {
                 throw new IllegalArgumentException("Unknown io mode: " + mode);
         }
         EventLoopGroup workerGroup = bossGroup;
+        PooledByteBufAllocator allocator = NettyUtils.createPooledByteBufAllocator(
+                true, true /* allowCache */, 0);
+        bootstrap = new ServerBootstrap()
+                .group(bossGroup, workerGroup)
+                .channel(NettyUtils.getServerChannelClass(ioMode))
+                .option(ChannelOption.ALLOCATOR, allocator)
+                .childOption(ChannelOption.ALLOCATOR, allocator);
 
     }
 }
