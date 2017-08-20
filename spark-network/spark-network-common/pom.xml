@@ -10,6 +10,7 @@
     <artifactId>spark-network-common</artifactId>
     <inceptionYear>2008</inceptionYear>
     <properties>
+
     </properties>
 
     <repositories>
@@ -29,6 +30,11 @@
     </pluginRepositories>
 
     <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Core dependencies -->
         <dependency>
             <groupId>io.netty</groupId>
@@ -115,6 +121,17 @@
                         <classpathContainer>org.eclipse.jdt.launching.JRE_CONTAINER</classpathContainer>
                         <classpathContainer>ch.epfl.lamp.sdt.launching.SCALA_CONTAINER</classpathContainer>
                     </classpathContainers>
+                </configuration>
+            </plugin>
+            <!-- 编码和编译和JDK版本 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>utf8</encoding>
                 </configuration>
             </plugin>
         </plugins>

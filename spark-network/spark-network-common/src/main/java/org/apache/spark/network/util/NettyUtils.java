@@ -2,8 +2,12 @@ package org.apache.spark.network.util;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.Channel;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
+import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.internal.PlatformDependent;
 
@@ -24,6 +28,19 @@ public class NettyUtils {
                 .setDaemon(true)
                 .setNameFormat(threadPoolPrefix + "-%d")
                 .build();
+    }
+    /** Creates a Netty EventLoopGroup based on the IOMode. */
+    public static EventLoopGroup createEventLoop(IOMode mode, int numThreads, String threadPrefix) {
+        ThreadFactory threadFactory = createThreadFactory(threadPrefix);
+
+        switch (mode) {
+            case NIO:
+                return new NioEventLoopGroup(numThreads, threadFactory);
+            case EPOLL:
+                return new EpollEventLoopGroup(numThreads, threadFactory);
+            default:
+                throw new IllegalArgumentException("Unknown io mode: " + mode);
+        }
     }
 
 
@@ -54,6 +71,13 @@ public class NettyUtils {
         );
     }
     /**
+     * Creates a LengthFieldBasedFrameDecoder where the first 8 bytes are the length of the frame.
+     * This is used before all decoders.
+     */
+    public static TransportFrameDecoder createFrameDecoder() {
+        return new TransportFrameDecoder();
+    }
+    /**
      * Used to get defaults from Netty's private static fields.
      * 从Netty的PooledByteBufAllocator私有静态变量中获取默认值
      * */
@@ -76,5 +100,12 @@ public class NettyUtils {
             default:
                 throw new IllegalArgumentException("Unknown io mode: " + mode);
         }
+    }
+    /** Returns the remote address on the channel or "&lt;unknown remote&gt;" if none exists. */
+    public static String getRemoteAddress(Channel channel) {
+        if (channel != null && channel.remoteAddress() != null) {
+            return channel.remoteAddress().toString();
+        }
+        return "<unknown remote>";
     }
 }

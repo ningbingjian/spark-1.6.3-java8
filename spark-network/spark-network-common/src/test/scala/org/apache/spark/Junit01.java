@@ -1,8 +1,5 @@
 package org.apache.spark;
 
-import org.apache.spark.network.server.TransportServer;
-import org.junit.Test;
-
 /**
  * Created by zhaoshufen
  * User:  zhaoshufen
@@ -12,8 +9,4 @@ import org.junit.Test;
  */
 
 public class Junit01 {
-    @Test
-    public void testT1(){
-        new TransportServer().testLog();
-    }
 }
