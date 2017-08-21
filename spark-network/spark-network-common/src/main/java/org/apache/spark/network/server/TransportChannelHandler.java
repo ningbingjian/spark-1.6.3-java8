@@ -105,4 +105,8 @@ public class TransportChannelHandler  extends SimpleChannelInboundHandler<Messag
         }
         ctx.fireUserEventTriggered(evt);
     }
+
+    public TransportResponseHandler getResponseHandler() {
+        return responseHandler;
+    }
 }

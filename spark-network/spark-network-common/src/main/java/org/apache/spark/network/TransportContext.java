@@ -5,6 +5,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.spark.network.client.TransportClient;
+import org.apache.spark.network.client.TransportClientBootstrap;
+import org.apache.spark.network.client.TransportClientFactory;
 import org.apache.spark.network.client.TransportResponseHandler;
 import org.apache.spark.network.protocol.MessageDecoder;
 import org.apache.spark.network.protocol.MessageEncoder;
@@ -65,6 +67,20 @@ public class TransportContext {
     }
     public TransportServer createServer() {
         return createServer(0, Lists.<TransportServerBootstrap>newArrayList());
+    }
+
+
+    /**
+     * Initializes a ClientFactory which runs the given TransportClientBootstraps prior to returning
+     * a new Client. Bootstraps will be executed synchronously, and must run successfully in order
+     * to create a Client.
+     */
+    public TransportClientFactory createClientFactory(List<TransportClientBootstrap> bootstraps) {
+        return new TransportClientFactory(this, bootstraps);
+    }
+
+    public TransportClientFactory createClientFactory() {
+        return createClientFactory(Lists.<TransportClientBootstrap>newArrayList());
     }
 
     public TransportChannelHandler initializePipeline(SocketChannel channel) {

@@ -36,6 +36,7 @@ public class TransportFrameDecoderSuite {
         ByteBuf data = createAndFeedFrames(100, decoder, ctx);
         verifyAndCloseDecoder(decoder, ctx, data);
     }
+    //测试解码碰到拦截器的情况
     @Test
     public void testInterception() throws Exception {
         final int interceptedReads = 3;
@@ -63,6 +64,60 @@ public class TransportFrameDecoderSuite {
             release(dataBuf);
         }
     }
+
+    //测试长度和内容体分开读取
+    @Test
+    public void testSplitLengthField() throws Exception {
+        //随机生成框架内容
+        byte[] frame = new byte[1024 * (RND.nextInt(31) + 1)];
+        //
+        ByteBuf buf = Unpooled.buffer(frame.length + 8);
+        //写入长度
+        buf.writeLong(frame.length + 8);
+        //写入真正内容
+        buf.writeBytes(frame);
+
+        TransportFrameDecoder decoder = new TransportFrameDecoder();
+        ChannelHandlerContext ctx = mockChannelHandlerContext();
+
+        try {
+            //调用decoder随机读取前7个字节内的内容
+            decoder.channelRead(ctx, buf.readSlice(RND.nextInt(7)).retain());
+            //never 表示一次都没有调用  因为前8个字节是框架长度，真正的内容再8个字节后面,所以并没有调用fireChannelRead
+            verify(ctx, never()).fireChannelRead(any(ByteBuf.class));
+            //读取后续真正的内容体
+            decoder.channelRead(ctx, buf);
+            verify(ctx).fireChannelRead(any(ByteBuf.class));
+            assertEquals(0, buf.refCnt());
+
+
+        }finally {
+            decoder.channelInactive(ctx);
+            release(buf);
+        }
+
+
+
+
+        }
+    @Test(expected = IllegalArgumentException.class)
+    public void testNegativeFrameSize() throws Exception {
+        testInvalidFrame(-1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testEmptyFrame() throws Exception {
+        // 8 because frame size includes the frame length.
+        testInvalidFrame(8);
+    }
+
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testLargeFrame() throws Exception {
+        // Frame length includes the frame size field, so need to add a few more bytes.
+        testInvalidFrame(Integer.MAX_VALUE + 9);
+    }
+
 
     private void verifyAndCloseDecoder(
             TransportFrameDecoder decoder,
@@ -119,7 +174,16 @@ public class TransportFrameDecoderSuite {
             buf.release(buf.refCnt());
         }
     }
-
+    private void testInvalidFrame(long size) throws Exception {
+        TransportFrameDecoder decoder = new TransportFrameDecoder();
+        ChannelHandlerContext ctx = mock(ChannelHandlerContext.class);
+        ByteBuf frame = Unpooled.copyLong(size);
+        try {
+            decoder.channelRead(ctx, frame);
+        } finally {
+            release(frame);
+        }
+    }
     private static class MockInterceptor implements TransportFrameDecoder.Interceptor {
 
         private int remainingReads;
@@ -147,5 +211,7 @@ public class TransportFrameDecoderSuite {
         }
 
     }
+
+
 
 }
