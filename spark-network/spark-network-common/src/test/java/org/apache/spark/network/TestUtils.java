@@ -15,18 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.spark.network.protocol;
+package org.apache.spark.network;
 
-import org.apache.spark.network.buffer.ManagedBuffer;
+import java.net.InetAddress;
 
-/**
- * Abstract class for response messages.
- */
-public abstract class AbstractResponseMessage extends AbstractMessage implements ResponseMessage {
-
-  protected AbstractResponseMessage(ManagedBuffer body, boolean isBodyInFrame) {
-    super(body, isBodyInFrame);
+public class TestUtils {
+  public static String getLocalHost() {
+    try {
+      return InetAddress.getLocalHost().getHostAddress();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
-
-  public abstract ResponseMessage createFailureResponse(String error);
 }

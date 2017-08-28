@@ -28,14 +28,6 @@ import io.netty.buffer.ByteBuf;
  * just copying data from it), then you must retain() the ByteBuf.
  *
  * Additionally, when adding a new Encodable Message, add it to {@link Message.Type}.
- *
- *
- *
- * 一个可编码成ByteBuf对象的接口
- * 多个可编码对象可以编码进一个单独的，预分配的ByteBuf中，所以编码时候必须提供长度
- * 编码对象应该提供一个静态的decode(ByteBuf)方法供MessageDecoder调用
- * 在解码过程中，如果对象使用ByteBuf而不是ByteBuf的副本作为数据,这种情况你必须调用retain()方法，保留ByteBuf
- *此外 当添加一个新的Encodeable消息时，在Message.Type中添加
  */
 public interface Encodable {
   /** Number of bytes of the encoded form of this object. */

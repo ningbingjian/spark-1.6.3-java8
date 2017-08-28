@@ -15,39 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.spark.network.protocol;
+package org.apache.spark.network.server;
 
-import com.google.common.base.Objects;
-import org.apache.spark.network.buffer.ManagedBuffer;
+import org.apache.spark.network.client.RpcResponseCallback;
+import org.apache.spark.network.client.TransportClient;
 
-/**
- * Abstract class for messages which optionally contain a body kept in a separate buffer.
- */
-public abstract class AbstractMessage implements Message {
-  private final ManagedBuffer body;
-  private final boolean isBodyInFrame;
+import java.nio.ByteBuffer;
 
-  protected AbstractMessage() {
-    this(null, false);
-  }
+/** An RpcHandler suitable for a client-only TransportContext, which cannot receive RPCs. */
+public class NoOpRpcHandler extends RpcHandler {
+  private final StreamManager streamManager;
 
-  protected AbstractMessage(ManagedBuffer body, boolean isBodyInFrame) {
-    this.body = body;
-    this.isBodyInFrame = isBodyInFrame;
+  public NoOpRpcHandler() {
+    streamManager = new OneForOneStreamManager();
   }
 
   @Override
-  public ManagedBuffer body() {
-    return body;
+  public void receive(TransportClient client, ByteBuffer message, RpcResponseCallback callback) {
+    throw new UnsupportedOperationException("Cannot handle messages");
   }
 
   @Override
-  public boolean isBodyInFrame() {
-    return isBodyInFrame;
-  }
-
-  protected boolean equals(AbstractMessage other) {
-    return isBodyInFrame == other.isBodyInFrame && Objects.equal(body, other.body);
-  }
-
+  public StreamManager getStreamManager() { return streamManager; }
 }

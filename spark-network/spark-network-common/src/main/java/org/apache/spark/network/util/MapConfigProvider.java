@@ -15,18 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.spark.network.protocol;
+package org.apache.spark.network.util;
 
-import org.apache.spark.network.buffer.ManagedBuffer;
+import com.google.common.collect.Maps;
 
-/**
- * Abstract class for response messages.
- */
-public abstract class AbstractResponseMessage extends AbstractMessage implements ResponseMessage {
+import java.util.Map;
+import java.util.NoSuchElementException;
 
-  protected AbstractResponseMessage(ManagedBuffer body, boolean isBodyInFrame) {
-    super(body, isBodyInFrame);
+/** ConfigProvider based on a Map (copied in the constructor). */
+public class MapConfigProvider extends ConfigProvider {
+  private final Map<String, String> config;
+
+  public MapConfigProvider(Map<String, String> config) {
+    this.config = Maps.newHashMap(config);
   }
 
-  public abstract ResponseMessage createFailureResponse(String error);
+  @Override
+  public String get(String name) {
+    String value = config.get(name);
+    if (value == null) {
+      throw new NoSuchElementException(name);
+    }
+    return value;
+  }
 }

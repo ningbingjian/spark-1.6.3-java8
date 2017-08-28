@@ -31,11 +31,7 @@ public interface Message extends Encodable {
   /** Whether to include the body of the message in the same frame as the message. */
   boolean isBodyInFrame();
 
-  /** Preceding every serialized Message is its type, which allows us to deserialize it.
-   * 每个序列化的消息第1个字节都是消息的类型,可通过类型反序列化消息
-   * 类型的编码长度是1个字节
-   *
-   * */
+  /** Preceding every serialized Message is its type, which allows us to deserialize it. */
   public static enum Type implements Encodable {
     ChunkFetchRequest(0), ChunkFetchSuccess(1), ChunkFetchFailure(2),
     RpcRequest(3), RpcResponse(4), RpcFailure(5),
@@ -51,9 +47,9 @@ public interface Message extends Encodable {
 
     public byte id() { return id; }
 
-    public int encodedLength() { return 1; }
+    @Override public int encodedLength() { return 1; }
 
-    public void encode(ByteBuf buf) { buf.writeByte(id); }
+    @Override public void encode(ByteBuf buf) { buf.writeByte(id); }
 
     public static Type decode(ByteBuf buf) {
       byte id = buf.readByte();

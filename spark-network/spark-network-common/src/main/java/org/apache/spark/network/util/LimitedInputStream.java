@@ -96,8 +96,7 @@ public final class LimitedInputStream extends FilterInputStream {
     in.reset();
     left = mark;
   }
-  @Override
-  public long skip(long n) throws IOException {
+  @Override public long skip(long n) throws IOException {
     n = Math.min(n, left);
     long skipped = in.skip(n);
     left -= skipped;

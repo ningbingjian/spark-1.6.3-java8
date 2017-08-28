@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-package org.apache.spark.network.protocol;
+package org.apache.spark.network.util;
 
-import org.apache.spark.network.buffer.ManagedBuffer;
+import java.util.NoSuchElementException;
 
-/**
- * Abstract class for response messages.
- */
-public abstract class AbstractResponseMessage extends AbstractMessage implements ResponseMessage {
-
-  protected AbstractResponseMessage(ManagedBuffer body, boolean isBodyInFrame) {
-    super(body, isBodyInFrame);
+/** Uses System properties to obtain config values. */
+public class SystemPropertyConfigProvider extends ConfigProvider {
+  @Override
+  public String get(String name) {
+    String value = System.getProperty(name);
+    if (value == null) {
+      throw new NoSuchElementException(name);
+    }
+    return value;
   }
-
-  public abstract ResponseMessage createFailureResponse(String error);
 }

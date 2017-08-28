@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.spark.network.util;
 
 import com.google.common.base.Preconditions;
@@ -8,14 +25,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.util.LinkedList;
-
-/**
- * Created by zhaoshufen
- * User:  zhaoshufen
- * Date: 2017/8/19
- * Time: 22:16
- * To change this setting on:Preferences->editor->File and Code Templates->Include->File Header
- */
 
 /**
  * A customized frame decoder that allows intercepting raw data.
@@ -33,169 +42,184 @@ import java.util.LinkedList;
  * framing resumes. Interceptors should not hold references to the data buffers provided
  * to their handle() method.
  */
-public class TransportFrameDecoder  extends ChannelInboundHandlerAdapter {
-    public static final String HANDLER_NAME = "frameDecoder";
-    private static final int LENGTH_SIZE = 8;
-    private static final int MAX_FRAME_SIZE = Integer.MAX_VALUE;
-    private static final int UNKNOWN_FRAME_SIZE = -1;
+public class TransportFrameDecoder extends ChannelInboundHandlerAdapter {
 
-    private final LinkedList<ByteBuf> buffers = new LinkedList<>();
-    private final ByteBuf frameLenBuf = Unpooled.buffer(LENGTH_SIZE, LENGTH_SIZE);
+  public static final String HANDLER_NAME = "frameDecoder";
+  private static final int LENGTH_SIZE = 8;
+  private static final int MAX_FRAME_SIZE = Integer.MAX_VALUE;
+  private static final int UNKNOWN_FRAME_SIZE = -1;
 
-    private long totalSize = 0;
-    private long nextFrameSize = UNKNOWN_FRAME_SIZE;
-    private volatile Interceptor interceptor;
+  private final LinkedList<ByteBuf> buffers = new LinkedList<>();
+  private final ByteBuf frameLenBuf = Unpooled.buffer(LENGTH_SIZE, LENGTH_SIZE);
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object data) throws Exception {
-        ByteBuf in = (ByteBuf) data;
-        buffers.add(in);
-        totalSize += in.readableBytes();
-        while (!buffers.isEmpty()) {
-            // First, feed the interceptor, and if it's still, active, try again.
-            if (interceptor != null) {
-                ByteBuf first = buffers.getFirst();
-                int available = first.readableBytes();
-                if (feedInterceptor(first)) {
-                    assert !first.isReadable() : "Interceptor still active but buffer has data.";
-                }
-                int read = available - first.readableBytes();
-                if (read == available) {
-                    buffers.removeFirst().release();
-                }
-                totalSize -= read;
-            }else {
-                // Interceptor is not active, so try to decode one frame.
-                ByteBuf frame = decodeNext();
-                if (frame == null) {
-                    break;
-                }
-                ctx.fireChannelRead(frame);
-            }
-        }
-    }
-    private ByteBuf decodeNext() throws Exception {
-        long frameSize = decodeFrameSize();
-        if (frameSize == UNKNOWN_FRAME_SIZE || totalSize < frameSize) {
-            return null;
-        }
-        // Reset size for next frame.
-        nextFrameSize = UNKNOWN_FRAME_SIZE;
-        Preconditions.checkArgument(frameSize < MAX_FRAME_SIZE, "Too large frame: %s", frameSize);
-        Preconditions.checkArgument(frameSize > 0, "Frame length should be positive: %s", frameSize);
-        // If the first buffer holds the entire frame, return it.
-        int remaining = (int) frameSize;
-        if (buffers.getFirst().readableBytes() >= remaining) {
-            return nextBufferForFrame(remaining);
-        }
-        // Otherwise, create a composite buffer.
-        CompositeByteBuf frame = buffers.getFirst().alloc().compositeBuffer(Integer.MAX_VALUE);
-        while (remaining > 0) {
-            ByteBuf next = nextBufferForFrame(remaining);
-            remaining -= next.readableBytes();
-            frame.addComponent(next).writerIndex(frame.writerIndex() + next.readableBytes());
-        }
-        assert remaining == 0;
-        return frame;
+  private long totalSize = 0;
+  private long nextFrameSize = UNKNOWN_FRAME_SIZE;
+  private volatile Interceptor interceptor;
 
-    }
-    /**
-     * Takes the first buffer in the internal list, and either adjust it to fit in the frame
-     * (by taking a slice out of it) or remove it from the internal list.
-     */
-    private ByteBuf nextBufferForFrame(int bytesToRead) {
-        ByteBuf buf = buffers.getFirst();
-        ByteBuf frame;
+  @Override
+  public void channelRead(ChannelHandlerContext ctx, Object data) throws Exception {
+    ByteBuf in = (ByteBuf) data;
+    buffers.add(in);
+    totalSize += in.readableBytes();
 
-        if (buf.readableBytes() > bytesToRead) {
-            frame = buf.retain().readSlice(bytesToRead);
-            totalSize -= bytesToRead;
-        } else {
-            frame = buf;
-            buffers.removeFirst();
-            totalSize -= frame.readableBytes();
-        }
-
-        return frame;
-    }
-
-    private long decodeFrameSize() {
-        if (nextFrameSize != UNKNOWN_FRAME_SIZE || totalSize < LENGTH_SIZE) {
-            return nextFrameSize;
-        }
-
-        // We know there's enough data. If the first buffer contains all the data, great. Otherwise,
-        // hold the bytes for the frame length in a composite buffer until we have enough data to read
-        // the frame size. Normally, it should be rare to need more than one buffer to read the frame
-        // size.
+    while (!buffers.isEmpty()) {
+      // First, feed the interceptor, and if it's still, active, try again.
+      if (interceptor != null) {
         ByteBuf first = buffers.getFirst();
-        if (first.readableBytes() >= LENGTH_SIZE) {
-            nextFrameSize = first.readLong() - LENGTH_SIZE;
-            totalSize -= LENGTH_SIZE;
-            if (!first.isReadable()) {
-                buffers.removeFirst().release();
-            }
-            return nextFrameSize;
+        int available = first.readableBytes();
+        if (feedInterceptor(first)) {
+          assert !first.isReadable() : "Interceptor still active but buffer has data.";
         }
-        while (frameLenBuf.readableBytes() < LENGTH_SIZE) {
-            ByteBuf next = buffers.getFirst();
-            int toRead = Math.min(next.readableBytes(), LENGTH_SIZE - frameLenBuf.readableBytes());
-            frameLenBuf.writeBytes(next, toRead);
-            if (!next.isReadable()) {
-                buffers.removeFirst().release();
-            }
+        int read = available - first.readableBytes();
+        if (read == available) {
+          buffers.removeFirst().release();
         }
-        nextFrameSize = frameLenBuf.readLong() - LENGTH_SIZE;
-        totalSize -= LENGTH_SIZE;
-        frameLenBuf.clear();
-        return nextFrameSize;
+        totalSize -= read;
+      } else {
+        // Interceptor is not active, so try to decode one frame.
+        ByteBuf frame = decodeNext();
+        if (frame == null) {
+          break;
+        }
+        ctx.fireChannelRead(frame);
+      }
     }
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        for (ByteBuf b : buffers) {
-            b.release();
-        }
-        if (interceptor != null) {
-            interceptor.channelInactive();
-        }
-        frameLenBuf.release();
-        super.channelInactive(ctx);
+  }
+
+  private long decodeFrameSize() {
+    if (nextFrameSize != UNKNOWN_FRAME_SIZE || totalSize < LENGTH_SIZE) {
+      return nextFrameSize;
     }
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        if (interceptor != null) {
-            interceptor.exceptionCaught(cause);
-        }
-        super.exceptionCaught(ctx, cause);
+
+    // We know there's enough data. If the first buffer contains all the data, great. Otherwise,
+    // hold the bytes for the frame length in a composite buffer until we have enough data to read
+    // the frame size. Normally, it should be rare to need more than one buffer to read the frame
+    // size.
+    ByteBuf first = buffers.getFirst();
+    if (first.readableBytes() >= LENGTH_SIZE) {
+      nextFrameSize = first.readLong() - LENGTH_SIZE;
+      totalSize -= LENGTH_SIZE;
+      if (!first.isReadable()) {
+        buffers.removeFirst().release();
+      }
+      return nextFrameSize;
     }
-    public void setInterceptor(Interceptor interceptor) {
-        Preconditions.checkState(this.interceptor == null, "Already have an interceptor.");
-        this.interceptor = interceptor;
+
+    while (frameLenBuf.readableBytes() < LENGTH_SIZE) {
+      ByteBuf next = buffers.getFirst();
+      int toRead = Math.min(next.readableBytes(), LENGTH_SIZE - frameLenBuf.readableBytes());
+      frameLenBuf.writeBytes(next, toRead);
+      if (!next.isReadable()) {
+        buffers.removeFirst().release();
+      }
     }
+
+    nextFrameSize = frameLenBuf.readLong() - LENGTH_SIZE;
+    totalSize -= LENGTH_SIZE;
+    frameLenBuf.clear();
+    return nextFrameSize;
+  }
+
+  private ByteBuf decodeNext() throws Exception {
+    long frameSize = decodeFrameSize();
+    if (frameSize == UNKNOWN_FRAME_SIZE || totalSize < frameSize) {
+      return null;
+    }
+
+    // Reset size for next frame.
+    nextFrameSize = UNKNOWN_FRAME_SIZE;
+
+    Preconditions.checkArgument(frameSize < MAX_FRAME_SIZE, "Too large frame: %s", frameSize);
+    Preconditions.checkArgument(frameSize > 0, "Frame length should be positive: %s", frameSize);
+
+    // If the first buffer holds the entire frame, return it.
+    int remaining = (int) frameSize;
+    if (buffers.getFirst().readableBytes() >= remaining) {
+      return nextBufferForFrame(remaining);
+    }
+
+    // Otherwise, create a composite buffer.
+    CompositeByteBuf frame = buffers.getFirst().alloc().compositeBuffer(Integer.MAX_VALUE);
+    while (remaining > 0) {
+      ByteBuf next = nextBufferForFrame(remaining);
+      remaining -= next.readableBytes();
+      frame.addComponent(next).writerIndex(frame.writerIndex() + next.readableBytes());
+    }
+    assert remaining == 0;
+    return frame;
+  }
+
+  /**
+   * Takes the first buffer in the internal list, and either adjust it to fit in the frame
+   * (by taking a slice out of it) or remove it from the internal list.
+   */
+  private ByteBuf nextBufferForFrame(int bytesToRead) {
+    ByteBuf buf = buffers.getFirst();
+    ByteBuf frame;
+
+    if (buf.readableBytes() > bytesToRead) {
+      frame = buf.retain().readSlice(bytesToRead);
+      totalSize -= bytesToRead;
+    } else {
+      frame = buf;
+      buffers.removeFirst();
+      totalSize -= frame.readableBytes();
+    }
+
+    return frame;
+  }
+
+  @Override
+  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    for (ByteBuf b : buffers) {
+      b.release();
+    }
+    if (interceptor != null) {
+      interceptor.channelInactive();
+    }
+    frameLenBuf.release();
+    super.channelInactive(ctx);
+  }
+
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    if (interceptor != null) {
+      interceptor.exceptionCaught(cause);
+    }
+    super.exceptionCaught(ctx, cause);
+  }
+
+  public void setInterceptor(Interceptor interceptor) {
+    Preconditions.checkState(this.interceptor == null, "Already have an interceptor.");
+    this.interceptor = interceptor;
+  }
+
+  /**
+   * @return Whether the interceptor is still active after processing the data.
+   */
+  private boolean feedInterceptor(ByteBuf buf) throws Exception {
+    if (interceptor != null && !interceptor.handle(buf)) {
+      interceptor = null;
+    }
+    return interceptor != null;
+  }
+
+  public static interface Interceptor {
+
     /**
-     * @return Whether the interceptor is still active after processing the data.
+     * Handles data received from the remote end.
+     *
+     * @param data Buffer containing data.
+     * @return "true" if the interceptor expects more data, "false" to uninstall the interceptor.
      */
-    private boolean feedInterceptor(ByteBuf buf) throws Exception {
-        if (interceptor != null && !interceptor.handle(buf)) {
-            interceptor = null;
-        }
-        return interceptor != null;
-    }
-    public static interface Interceptor {
+    boolean handle(ByteBuf data) throws Exception;
 
-        /**
-         * Handles data received from the remote end.
-         *
-         * @param data Buffer containing data.
-         * @return "true" if the interceptor expects more data, "false" to uninstall the interceptor.
-         */
-        boolean handle(ByteBuf data) throws Exception;
+    /** Called if an exception is thrown in the channel pipeline. */
+    void exceptionCaught(Throwable cause) throws Exception;
 
-        /** Called if an exception is thrown in the channel pipeline. */
-        void exceptionCaught(Throwable cause) throws Exception;
+    /** Called if the channel is closed and the interceptor is still installed. */
+    void channelInactive() throws Exception;
 
-        /** Called if the channel is closed and the interceptor is still installed. */
-        void channelInactive() throws Exception;
+  }
 
-    }
 }
