@@ -7,7 +7,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>spark-network-common</artifactId>
+    <artifactId>spark-network-shuffle</artifactId>
     <inceptionYear>2008</inceptionYear>
     <properties>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -32,6 +32,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
@@ -39,51 +44,53 @@
         </dependency>
         <!-- Core dependencies -->
         <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-network-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
-        <!-- Provided dependencies -->
+        <dependency>
+            <groupId>org.fusesource.leveldbjni</groupId>
+            <artifactId>leveldbjni-all</artifactId>
+            <version>1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
-        </dependency>
-        <!--
-          Promote Guava to "compile" so that maven-shade-plugin picks it up (for packaging the Optional
-          class exposed in the Java API). The plugin will then remove this dependency from the published
-          pom, so that Guava does not pollute the client's compilation classpath.
-        -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <scope>compile</scope>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <scope>test</scope>
+            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
-            <scope>test</scope>
+            <version>${slf4j.version}</version>
         </dependency>
-      <!--  <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-test-tags_${scala.binary.version}</artifactId>
-        </dependency>-->
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+            <!-- <scope>runtime</scope> --> <!-- more correct, but scalac 2.10.3 doesn't like it -->
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>${log4j.version}</version>
+            <scope>${hadoop.deps.scope}</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -104,7 +111,7 @@
                 <configuration>
                     <scalaVersion>${scala.version}</scalaVersion>
                     <args>
-                        <arg>-target:jvm-${java.version}</arg>
+                        <arg>-target:jvm-1.5</arg>
                     </args>
                 </configuration>
             </plugin>
@@ -123,17 +130,6 @@
                         <classpathContainer>org.eclipse.jdt.launching.JRE_CONTAINER</classpathContainer>
                         <classpathContainer>ch.epfl.lamp.sdt.launching.SCALA_CONTAINER</classpathContainer>
                     </classpathContainers>
-                </configuration>
-            </plugin>
-            <!-- 编码和编译和JDK版本 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <encoding>utf8</encoding>
                 </configuration>
             </plugin>
         </plugins>
